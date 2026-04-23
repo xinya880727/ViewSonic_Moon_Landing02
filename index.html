@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Apollo 11 : Moon Landing</title>
+  
+  <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.4.0/model-viewer.min.js"></script>
+  
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+      }
+    }
+  </script>
+
+  <style>
+    * { box-sizing: border-box; }
+    body, html {
+      margin: 0; padding: 0; width: 100%; height: 100%;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-image: url('bg_1920x1080.jpg'); 
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+      background-color: #05050a;
+      overflow: hidden;
+    }
+
+    model-viewer {
+      width: 100%; height: 100%;
+      --poster-color: transparent;
+      background-color: transparent;
+    }
+
+    .header {
+      position: absolute; top: 0; left: 0; width: 100%; padding: 10px; 
+      background: linear-gradient(to bottom, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0) 100%);
+      color: white; z-index: 10; pointer-events: none; text-align: center;
+    }
+    .header h4 { margin: 0; font-size: 14px; line-height: 1.4; color: #e0e0e0; }
+
+    .ar-button {
+      background-color: white; color: black; border: none; border-radius: 50px;
+      padding: 14px 28px; font-size: 16px; font-weight: bold;
+      position: absolute; bottom: 32px; left: 50%; transform: translateX(-50%);
+      cursor: pointer; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+      display: flex; align-items: center; gap: 8px; transition: all 0.2s;
+    }
+    .ar-button:active { transform: translateX(-50%) scale(0.95); }
+    .ar-button:disabled { background-color: #cccccc; cursor: not-allowed; }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <h3>雙指捏合縮放模型，單指拖曳旋轉視角。使用行動裝置點擊下方按鈕，可以開啟 AR 擴增實境，在現實世界中探索月球模型！</h3>
+
+  </div>
+
+  <model-viewer 
+    id="my-viewer"
+    alt="我的 3D 模型"
+    ar 
+    ar-scale="fixed"
+    ar-modes="webxr scene-viewer quick-look" 
+    camera-controls 
+    disable-pan
+    auto-rotate
+    camera-orbit="0deg 75deg 150%" 
+    max-camera-orbit="auto auto 300%"
+    shadow-intensity="1.5"
+    environment-image="neutral"
+    exposure="1.2">
+    
+    <button slot="ar-button" class="ar-button" id="ar-btn" disabled>
+      <span class="btn-text">模型處理中...</span>
+    </button>
+  </model-viewer>
+
+  <script type="module">
+    import * as THREE from 'three';
+    import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+    import { GLTFExporter } from 'three/addons/exporters/GLTFExporter.js';
+
+    // ==========================================
+    // ⚙️ 設定區域
+    // ==========================================
+    const modelFileName = 'Moon03.glb'; 
+    const scaleFactor = 0.15; 
+    // ==========================================
+
+    const viewer = document.getElementById('my-viewer');
+    const arBtn = document.getElementById('ar-btn');
+    const btnText = arBtn.querySelector('.btn-text');
+
+    // 🎯 解決快取問題：加上時間戳記
+    const cacheBuster = `?v=${new Date().getTime()}`;
+
+    const loader = new GLTFLoader();
+    
+    // 載入模型時強制破壞快取
+    loader.load(modelFileName + cacheBuster, async (gltf) => {
+      const scene = gltf.scene;
+      
+      // 縮放烘焙邏輯
+      const processedGeometries = new Set();
+      scene.traverse((child) => {
+        if (child.isMesh) {
+          if (!processedGeometries.has(child.geometry)) {
+            child.geometry.scale(scaleFactor, scaleFactor, scaleFactor);
+            processedGeometries.add(child.geometry);
+          }
+        }
+        if (child.position) {
+          child.position.multiplyScalar(scaleFactor);
+        }
+      });
+
+      // 匯出為新 GLB
+      const gltfExporter = new GLTFExporter();
+      gltfExporter.parse(scene, async (newGltf) => {
+        const glbBlob = new Blob([newGltf], { type: 'application/octet-stream' });
+        const glbUrl = URL.createObjectURL(glbBlob);
+        
+        // 🎯 關鍵步驟：
+        // 1. 先清除 ios-src，強迫 model-viewer 丟棄舊有的 USDZ 連結
+        viewer.removeAttribute('ios-src');
+        
+        // 2. 更新 src 為縮小後的模型
+        viewer.src = glbUrl;
+
+        // 3. 在 model-viewer 3.0+ 中，不需要手動轉 USDZ。
+        // 它會自動偵測到 src 改變，並在 iOS 進入 AR 時自動重新生成對應的 USDZ。
+
+        // 處理完成
+        arBtn.disabled = false;
+        btnText.innerHTML = `
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 4px;"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
+          啟動 AR 模式
+        `;
+
+      }, (error) => {
+        console.error('縮小 GLB 失敗', error);
+        btnText.innerText = '模型處理失敗';
+      }, { binary: true });
+
+    }, undefined, (error) => {
+      console.error(`載入原始模型失敗`, error);
+      btnText.innerText = '找不到模型檔案';
+    });
+  </script>
+
+</body>
+</html>
