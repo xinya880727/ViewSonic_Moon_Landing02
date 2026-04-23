@@ -48,6 +48,7 @@
       position: absolute; bottom: 32px; left: 50%; transform: translateX(-50%);
       cursor: pointer; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
       display: flex; align-items: center; gap: 8px; transition: all 0.2s;
+      white-space: nowrap; /* 確保文字永遠不換行 */
     }
     .ar-button:active { transform: translateX(-50%) scale(0.95); }
     .ar-button:disabled { background-color: #cccccc; cursor: not-allowed; }
