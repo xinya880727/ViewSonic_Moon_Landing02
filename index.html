@@ -57,14 +57,13 @@
 
   <div class="header">
     <h3>雙指捏合縮放模型，單指拖曳旋轉視角。使用行動裝置點擊下方按鈕，可以開啟 AR 擴增實境，在現實世界中探索月球模型！</h3>
-
   </div>
 
   <model-viewer 
     id="my-viewer"
     alt="我的 3D 模型"
     ar 
-    ar-scale="fixed"
+    ar-scale="auto" 
     ar-modes="webxr scene-viewer quick-look" 
     camera-controls 
     disable-pan
@@ -89,7 +88,7 @@
     // ⚙️ 設定區域
     // ==========================================
     const modelFileName = 'Moon01.glb'; 
-    const scaleFactor = 0.15; 
+    const scaleFactor = 0.1; 
     // ==========================================
 
     const viewer = document.getElementById('my-viewer');
